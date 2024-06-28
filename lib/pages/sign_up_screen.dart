@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import '../common/color_constants.dart';
@@ -7,19 +8,35 @@ import '../common/snackbar_util.dart';
 import '../common/string_constants.dart';
 import '../common/widget/common_text.dart';
 import '../common/widget/common_text_field.dart';
-import '../controllers/email_controller.dart';
 import '../controllers/sign_up_controller.dart';
+import 'home_page.dart';
 
 class SignUpScreen extends StatelessWidget {
   SignUpScreen({super.key});
 
-  final SignUpController signUpController = Get.find();
+  final SignUpController signUpController = SignUpController();
+  String phone = "";
+  String email = "";
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: _buildUI(context),
+    final Map<String, dynamic> arguments = Get.arguments;
+    phone = arguments['phone'] ?? "";
+    email = arguments['email'] ?? "";
+    print("Phone :: $phone Email :: $email");
+
+    return GestureDetector(
+      onTap: () {
+        var f = FocusScope.of(context);
+
+        if (!f.hasPrimaryFocus) {
+          f.unfocus();
+        }
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        body: _buildUI(context),
+      ),
     );
   }
 
@@ -55,6 +72,7 @@ class SignUpScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 30,),
                         CommonTextField(
+                          textInputAction: TextInputAction.next,
                           controller: signUpController.nameTextController,
                           labelText: StringConstants.fullName,
                           allBorderNull: true,
@@ -69,9 +87,15 @@ class SignUpScreen extends StatelessWidget {
                             signUpController.nameTextController.text = value;
                           },
                           suffixPadding: const EdgeInsets.only(left: 8, right: 22.0),
+                          maxLength: 30,
+                          counterText: "",
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp("[a-zA-Z]"))
+                          ]
                         ),
                         const SizedBox(height: 15,),
                         CommonTextField(
+                          textInputAction: TextInputAction.next,
                           controller: signUpController.passwordTextController,
                           labelText: StringConstants.password,
                           allBorderNull: true,
@@ -88,9 +112,12 @@ class SignUpScreen extends StatelessWidget {
                             "assets/images/ic_eye_slash.svg",
                             colorFilter: const ColorFilter.mode(
                                 ColorConstants.grey, BlendMode.srcIn)),
+                          maxLength: 25,
+                          counterText: "",
                         ),
                         const SizedBox(height: 15,),
                         CommonTextField(
+                          textInputAction: TextInputAction.done,
                           controller: signUpController.confirmPasswordTextController,
                           labelText: StringConstants.confirmPassword,
                           allBorderNull: true,
@@ -107,8 +134,10 @@ class SignUpScreen extends StatelessWidget {
                             "assets/images/ic_eye_slash.svg",
                             colorFilter: const ColorFilter.mode(
                                 ColorConstants.grey, BlendMode.srcIn)),
+                          maxLength: 25,
+                          counterText: "",
                         ),
-                        SizedBox(height: 20,),
+                        const SizedBox(height: 20,),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -187,19 +216,47 @@ class SignUpScreen extends StatelessWidget {
                     )
                 ),
                 GestureDetector(
-                  onTap: () {
-                    if (signUpController.nameTextController.text.trim().isEmpty) {
+                  onTap: () async {
+                    String nameText = signUpController.nameTextController.text.trim();
+                    String passwordText = signUpController.passwordTextController.text.trim();
+                    String confirmPasswordText = signUpController.confirmPasswordTextController.text.trim();
+
+                    if (nameText.isEmpty) {
                       SnackbarUtil.show(title: StringConstants.fullNameEmpty, message: StringConstants.fullNameEmptyMsg);
                       return;
                     }
-                    if (signUpController.passwordTextController.text.trim().isEmpty) {
+                    if (passwordText.isEmpty) {
                       SnackbarUtil.show(title: StringConstants.passwordEmpty, message: StringConstants.passwordEmptyMsg);
                       return;
                     }
-                    if (signUpController.confirmPasswordTextController.text.trim().isEmpty) {
+                    if (confirmPasswordText.isEmpty) {
                       SnackbarUtil.show(title: StringConstants.confirmPasswordEmpty, message: StringConstants.confirmPasswordEmptyMsg);
                       return;
                     }
+                    if (passwordText.length < 8) {
+                      SnackbarUtil.show(title: StringConstants.passwordShort, message: StringConstants.passwordShortMsg);
+                      return;
+                    }
+                    if (confirmPasswordText.length < 8) {
+                      SnackbarUtil.show(title: StringConstants.confirmPasswordShort, message: StringConstants.confirmPasswordShortMsg);
+                      return;
+                    }
+                    if (!(passwordText == confirmPasswordText)) {
+                      SnackbarUtil.show(title: StringConstants.passwordMismatch, message: StringConstants.passwordMismatchMsg);
+                      return;
+                    }
+                    if (signUpController.conditionChecked.isFalse) {
+                      SnackbarUtil.show(title: StringConstants.termsNotChecked, message: StringConstants.termsNotCheckedMsg);
+                      return;
+                    }
+
+                    var success = await signUpController.registerUser(phone, email, nameText, passwordText);
+
+                    if (success) {
+                      Get.offAll(() => HomePage());
+                    }
+
+
                   },
                   child: Container(
                       height: 55,
@@ -220,11 +277,13 @@ class SignUpScreen extends StatelessWidget {
           Visibility(
             visible: signUpController.loading.value,
             child: const Positioned(
-              child: SizedBox(
-                height: 30,
-                width: 30,
-                child: CircularProgressIndicator(
-                  color: ColorConstants.primaryGreen,
+              child: Center(
+                child: SizedBox(
+                  height: 30,
+                  width: 30,
+                  child: CircularProgressIndicator(
+                    color: ColorConstants.primaryGreen,
+                  ),
                 ),
               )
             ),

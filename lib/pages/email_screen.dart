@@ -12,12 +12,25 @@ import '../controllers/email_controller.dart';
 class EmailScreen extends StatelessWidget {
   EmailScreen({super.key});
 
-  final EmailController emailController = Get.find();
+  final EmailController emailController = EmailController();
+  String phone = "";
 
   @override
   Widget build(BuildContext context) {
+    final Map<String, dynamic> arguments = Get.arguments;
+    phone = arguments['phone'] ?? "";
+
     return Scaffold(
-      body: _buildUI(context),
+      body: GestureDetector(
+          onTap: () {
+            var f = FocusScope.of(context);
+
+            if (!f.hasPrimaryFocus) {
+              f.unfocus();
+            }
+          },
+          child: _buildUI(context)
+      ),
     );
   }
 
@@ -48,7 +61,12 @@ class EmailScreen extends StatelessWidget {
                             ),
                             GestureDetector(
                               onTap: () {
-                                Get.to(SignUpScreen());
+                                Get.to(() => SignUpScreen(),
+                                  arguments: {
+                                    "phone" : phone,
+                                    "email" : ""
+                                  }
+                                );
                               },
                               child: const CommonText(
                                 StringConstants.skip,
@@ -90,11 +108,22 @@ class EmailScreen extends StatelessWidget {
                 ),
                 GestureDetector(
                   onTap: () {
-                    if (emailController.emailTextController.text.trim().isEmpty) {
+                    String emailText = emailController.emailTextController.text.trim();
+
+                    if (emailText.isEmpty) {
                       SnackbarUtil.show(title: StringConstants.emailIdEmpty, message: StringConstants.emailIdEmptyMsg);
                       return;
                     }
-                    Get.to(SignUpScreen());
+                    if (!RegExp(StringConstants.emailPattern).hasMatch(emailText)){
+                      SnackbarUtil.show(title: StringConstants.emailIdInvalid, message: StringConstants.emailIdInvalidMsg);
+                      return;
+                    }
+                    Get.to(() => SignUpScreen(),
+                        arguments: {
+                          "phone" : phone,
+                          "email" : emailText
+                        }
+                    );
                   },
                   child: Container(
                       height: 55,
@@ -115,11 +144,13 @@ class EmailScreen extends StatelessWidget {
           Visibility(
             visible: emailController.loading.value,
             child: const Positioned(
-              child: SizedBox(
-                height: 30,
-                width: 30,
-                child: CircularProgressIndicator(
-                  color: ColorConstants.primaryGreen,
+              child: Center(
+                child: SizedBox(
+                  height: 30,
+                  width: 30,
+                  child: CircularProgressIndicator(
+                    color: ColorConstants.primaryGreen,
+                  ),
                 ),
               )
             ),

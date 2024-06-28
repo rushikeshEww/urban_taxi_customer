@@ -2,11 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:urban_taxi_customer/common/color_constants.dart';
+import 'package:urban_taxi_customer/common/string_constants.dart';
+import 'package:urban_taxi_customer/pages/home_page.dart';
 import 'package:urban_taxi_customer/pages/login_screen.dart';
 
 class SplashPage extends StatelessWidget {
-  const SplashPage({super.key});
+  SplashPage({super.key});
+  final storage = GetStorage(StringConstants.storageName);
 
 
   @override
@@ -15,7 +19,15 @@ class SplashPage extends StatelessWidget {
     //   statusBarIconBrightness: Brightness.light // Dark text for status bar
     // ));
 
-    Timer(const Duration(seconds: 2), () => Get.off(LoginScreen()));
+    Timer(
+      const Duration(seconds: 2), () {
+        if (storage.hasData(StringConstants.bearerToken) && storage.hasData(StringConstants.userLoginData)) {
+          Get.off(() => HomePage());
+        } else {
+          Get.off(() => LoginScreen());
+        }
+      }
+    );
 
     return Scaffold(
       backgroundColor: ColorConstants.primaryGreen,

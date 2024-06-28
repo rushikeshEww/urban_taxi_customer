@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:urban_taxi_customer/controllers/phone_controller.dart';
@@ -12,12 +13,21 @@ import '../common/widget/common_text_field.dart';
 class PhoneScreen extends StatelessWidget {
   PhoneScreen({super.key});
 
-  final PhoneController phoneController = Get.find();
+  final PhoneController phoneController = PhoneController();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _buildUI(context),
+    return GestureDetector(
+      onTap: () {
+        var f = FocusScope.of(context);
+
+        if (!f.hasPrimaryFocus) {
+          f.unfocus();
+        }
+      },
+      child: Scaffold(
+        body: _buildUI(context),
+      ),
     );
   }
 
@@ -71,9 +81,11 @@ class PhoneScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            SizedBox(width: 10,),
+                            const SizedBox(width: 10,),
                             Expanded(
                               child: CommonTextField(
+                                maxLength: 13,
+                                counterText: "",
                                 keyboardType: TextInputType.number,
                                 outerContainerHeight: 58,
                                 controller: phoneController.phoneTextController,
@@ -90,6 +102,9 @@ class PhoneScreen extends StatelessWidget {
                                   phoneController.phoneTextController.text = value;
                                 },
                                 suffixPadding: const EdgeInsets.only(left: 8, right: 22.0),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
                               ),
                             )
                           ],
@@ -98,12 +113,24 @@ class PhoneScreen extends StatelessWidget {
                     )
                 ),
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     if (phoneController.phoneTextController.text.trim().isEmpty) {
                       SnackbarUtil.show(title: StringConstants.mobileNumberEmpty, message: StringConstants.mobileNumberEmptyMsg);
                       return;
                     }
-                    Get.to(OTPScreen());
+                    if (phoneController.phoneTextController.text.trim().length < 10) {
+                      SnackbarUtil.show(title: StringConstants.mobileNumberInvalid, message: StringConstants.mobileNumberInvalidMsg);
+                      return;
+                    }
+                    var success = await phoneController.sendOTP(phoneController.phoneTextController.text.trim());
+                    if (success) {
+                      Get.to(() => OTPScreen(),
+                        arguments: {
+                          "phone" : phoneController.phoneTextController.text.trim(),
+                        }
+                      );
+                    }
+
                   },
                   child: Container(
                       height: 55,
@@ -124,11 +151,13 @@ class PhoneScreen extends StatelessWidget {
           Visibility(
             visible: phoneController.loading.value,
             child: const Positioned(
-                child: SizedBox(
-                  height: 30,
-                  width: 30,
-                  child: CircularProgressIndicator(
-                    color: ColorConstants.primaryGreen,
+                child: Center(
+                  child: SizedBox(
+                    height: 30,
+                    width: 30,
+                    child: CircularProgressIndicator(
+                      color: ColorConstants.primaryGreen,
+                    ),
                   ),
                 )
             ),

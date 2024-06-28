@@ -1,3 +1,4 @@
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,17 +7,23 @@ import 'package:urban_taxi_customer/common/widget/pin_put.dart';
 import 'package:urban_taxi_customer/controllers/otp_controller.dart';
 import 'package:urban_taxi_customer/pages/email_screen.dart';
 import '../common/color_constants.dart';
-import '../common/snackbar_util.dart';
 import '../common/string_constants.dart';
 import '../common/widget/common_text.dart';
 
 class OTPScreen extends StatelessWidget {
   OTPScreen({super.key});
 
-  final OTPController otpController = Get.find();
+  final OTPController otpController = OTPController();
+  String phone = "";
 
   @override
   Widget build(BuildContext context) {
+
+    final Map<String, dynamic> arguments = Get.arguments;
+    phone = arguments['phone'] ?? "";
+
+    startInitialTimer();
+
     return GestureDetector(
       onTap: () {
         var f = FocusScope.of(context);
@@ -32,8 +39,6 @@ class OTPScreen extends StatelessWidget {
   }
 
   Widget _buildUI(BuildContext context) {
-    otpController.stopTimer();
-    otpController.startTimer();
     return Obx(() {
       return Stack(
         children: [
@@ -59,9 +64,32 @@ class OTPScreen extends StatelessWidget {
                         const CommonText(StringConstants.enterTheCode, fontSize: 26,
                           fontWeight: FontWeight.w700,),
                         const SizedBox(height: 25,),
-                        const CommonText(
-                          "${StringConstants.codeHasSentTo} +1 234 314 9878", color: ColorConstants.grey,),
+
+
+                        // const CommonText(
+                        //   "${StringConstants.codeHasSentTo} +1 234 314 9878", color: ColorConstants.grey,),
+
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              const TextSpan(
+                                text: "${StringConstants.codeHasSentTo} ",
+                                style: TextStyle(color: ColorConstants.grey,
+                                    fontSize: 16,),
+                              ),
+                              TextSpan(
+                                  text: phone.isEmpty ? "your phone" : "+1 $phone",
+                                  style: const TextStyle(color: ColorConstants.grey,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+
                         const SizedBox(height: 30,),
+
+
                         // Row(
                         //   mainAxisSize: MainAxisSize.max,
                         //   children: [
@@ -122,14 +150,26 @@ class OTPScreen extends StatelessWidget {
                         FilledRoundedPinPut(
                           controller: otpController.firstController, 
                           focusNode: otpController.firstFocusNode,
-                          onCompleted: (pin) {
+                          onCompleted: (pin) async {
                             print(pin);
-                            if (pin == "1212") {
-                              Get.to(EmailScreen());
-                              otpController.stopTimer();
-                              return;
+
+                            var success = await otpController.verifyOTP(phone, pin);
+
+                            if (success) {
+                              Get.off(() => EmailScreen(),
+                                arguments: {
+                                  "phone" : phone,
+                                }
+                              );
                             }
-                            SnackbarUtil.show(title: StringConstants.otpWrong, message: StringConstants.otpWrongMsg);
+
+                            /// to test
+                            // if (pin == "1212") {
+                            //   Get.to(() => EmailScreen());
+                            //   otpController.stopTimer();
+                            //   return;
+                            // }
+                            // SnackbarUtil.show(title: StringConstants.otpWrong, message: StringConstants.otpWrongMsg);
                           },
                           width: 80,
                           height: 60,
@@ -149,9 +189,12 @@ class OTPScreen extends StatelessWidget {
                                   style: TextStyle(color: ColorConstants.primaryGreen,
                                       fontSize: 16,
                                       fontWeight: otpController.isTimerOn.isTrue ? FontWeight.w700 : FontWeight.w500),
-                                  recognizer: TapGestureRecognizer()..onTap = () {
-                                    if (otpController.isTimerOn.isFalse) {
-                                      otpController.startTimer();
+                                  recognizer: TapGestureRecognizer()..onTap = () async {
+                                    var success = await otpController.sendOTP(phone);
+                                    if (success) {
+                                      if (otpController.isTimerOn.isFalse) {
+                                        otpController.startTimer();
+                                      }
                                     }
                                   }
                               ),
@@ -188,11 +231,13 @@ class OTPScreen extends StatelessWidget {
           Visibility(
             visible: otpController.loading.value,
             child: const Positioned(
-                child: SizedBox(
-                  height: 30,
-                  width: 30,
-                  child: CircularProgressIndicator(
-                    color: ColorConstants.primaryGreen,
+                child: Center(
+                  child: SizedBox(
+                    height: 30,
+                    width: 30,
+                    child: CircularProgressIndicator(
+                      color: ColorConstants.primaryGreen,
+                    ),
                   ),
                 )
             ),
@@ -200,5 +245,12 @@ class OTPScreen extends StatelessWidget {
         ],
       );
     });
+  }
+
+  void startInitialTimer() {
+    if (otpController.firstTime) {
+      otpController.stopTimer();
+      otpController.startTimer();
+    }
   }
 }

@@ -9,12 +9,15 @@ import 'package:urban_taxi_customer/common/widget/common_text.dart';
 import 'package:urban_taxi_customer/common/widget/common_text_field.dart';
 import 'package:urban_taxi_customer/controllers/login_controller.dart';
 import 'package:urban_taxi_customer/pages/forgot_password_screen.dart';
+import 'package:urban_taxi_customer/pages/home_page.dart';
 import 'package:urban_taxi_customer/pages/phone_screen.dart';
+
+import '../common/utils.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
 
-  final LoginController loginController = Get.find();
+  final LoginController loginController = LoginController();
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +65,7 @@ class LoginScreen extends StatelessWidget {
                         Align(alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: () {
-                                Get.to(ForgotPasswordScreen());
+                                Get.to(() => ForgotPasswordScreen());
                               },
                               child: const CommonText(
                                 StringConstants.forgotPassword,
@@ -76,27 +79,50 @@ class LoginScreen extends StatelessWidget {
                     )
                 ),
                 GestureDetector(
-                  onTap: () {
-                    if (loginController.emailController.text.trim().isEmpty) {
+                  onTap: () async {
+                    String emailPhoneText = loginController.emailController.text.trim();
+                    String passwordText = loginController.passwordController.text.trim();
+                    bool isNumericOnly = isNumeric(emailPhoneText);
+
+                    if (emailPhoneText.isEmpty) {
                       SnackbarUtil.show(title: StringConstants.emailOrMobileEmpty, message: StringConstants.emailOrMobileEmptyMsg);
                       return;
                     }
-                    if (loginController.passwordController.text.trim().isEmpty) {
+                    if (passwordText.isEmpty) {
                       SnackbarUtil.show(title: StringConstants.passwordEmpty, message: StringConstants.passwordEmptyMsg);
                       return;
                     }
-                    SnackbarUtil.show(title: StringConstants.login, message: "Login Success", backgroundColor: ColorConstants.primaryGreen, icon: const Icon(Icons.check_circle, color: ColorConstants.white,));
+                    if (isNumericOnly && emailPhoneText.length < 10) {
+                      SnackbarUtil.show(title: StringConstants.mobileNumberInvalid, message: StringConstants.mobileNumberInvalidMsg);
+                      return;
+                    }
+                    if (!isNumericOnly && !RegExp(StringConstants.emailPattern).hasMatch(emailPhoneText)){
+                      SnackbarUtil.show(title: StringConstants.emailIdInvalid, message: StringConstants.emailIdInvalidMsg);
+                      return;
+                    }
+                    if (passwordText.length < 8) {
+                      SnackbarUtil.show(title: StringConstants.passwordShort, message: StringConstants.passwordShortMsg);
+                      return;
+                    }
+
+                    var success = await loginController.getLogin(emailPhoneText, passwordText);
+                    if (success) {
+                      Get.offAll(() => HomePage());
+                    }
+
                   },
-                  child: Container(
-                      height: 55,
-                      width: Get.width,
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(32),
-                          color: ColorConstants.primaryGreen
-                      ),
-                      child: const Center(child: CommonText(
-                        StringConstants.login, color: ColorConstants.white,
-                        fontWeight: FontWeight.w700,))
+                  child: Center(
+                    child: Container(
+                        height: 55,
+                        width: Get.width,
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(32),
+                            color: ColorConstants.primaryGreen
+                        ),
+                        child: const Center(child: CommonText(
+                          StringConstants.login, color: ColorConstants.white,
+                          fontWeight: FontWeight.w700,))
+                    ),
                   ),
                 ),
                 const SizedBox(height: 35,),
@@ -117,7 +143,7 @@ class LoginScreen extends StatelessWidget {
                               fontSize: 15,
                               fontWeight: FontWeight.w500),
                           recognizer: TapGestureRecognizer()..onTap = () {
-                            Get.to(PhoneScreen());
+                            Get.to(() => PhoneScreen());
                           }
                         ),
                       ],
@@ -133,11 +159,13 @@ class LoginScreen extends StatelessWidget {
           Visibility(
             visible: loginController.loading.value,
             child: const Positioned(
-              child: SizedBox(
-                height: 30,
-                width: 30,
-                child: CircularProgressIndicator(
-                  color: ColorConstants.primaryGreen,
+              child: Center(
+                child: SizedBox(
+                  height: 30,
+                  width: 30,
+                  child: CircularProgressIndicator(
+                    color: ColorConstants.primaryGreen,
+                  ),
                 ),
               )
             ),
@@ -151,6 +179,7 @@ class LoginScreen extends StatelessWidget {
     return Column(
       children: [
         CommonTextField(
+          textInputAction: TextInputAction.next,
           controller: loginController.emailController,
           labelText: StringConstants.emailOrMobile,
           allBorderNull: true,
@@ -165,9 +194,12 @@ class LoginScreen extends StatelessWidget {
             loginController.emailController.text = value;
           },
           suffixPadding: const EdgeInsets.only(left: 8, right: 22.0),
+          maxLength: 30,
+          counterText: "",
         ),
         const SizedBox(height: 15,),
         CommonTextField(
+          textInputAction: TextInputAction.done,
           controller: loginController.passwordController,
           labelText: StringConstants.password,
           allBorderNull: true,
@@ -175,6 +207,8 @@ class LoginScreen extends StatelessWidget {
           onTapIcon: () {
             loginController.passwordVisibilityChange();
           },
+          maxLength: 25,
+          counterText: "",
           obscureText: !loginController.passwordVisible.value,
           suffixIcon: !loginController.passwordVisible.value
             ? SvgPicture.asset("assets/images/ic_eye.svg",

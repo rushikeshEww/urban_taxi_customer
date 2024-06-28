@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:urban_taxi_customer/common/color_constants.dart';
+import 'package:urban_taxi_customer/common/string_constants.dart';
 import 'package:urban_taxi_customer/common/utils.dart';
 import 'package:urban_taxi_customer/pages/splash_page.dart';
 
 void main() async {
-  await registerControllers();
+  await GetStorage.init(StringConstants.storageName);
+  await registerServices();
+  // await registerControllers();
   runApp(const MyApp());
 }
 
@@ -30,7 +34,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: false,
       ),
       routes: {
-        "/splash" : (context) => const SplashPage(),
+        "/splash" : (context) => SplashPage(),
       },
       initialRoute: "/splash",
     );

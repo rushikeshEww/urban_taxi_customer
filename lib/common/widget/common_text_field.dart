@@ -113,7 +113,7 @@ class _CommonTextFieldState extends State<CommonTextField> {
       ) : null,
       child: TextFormField(
         focusNode: widget.focusNode,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
+        autovalidateMode: AutovalidateMode.disabled,
         textInputAction: widget.textInputAction,
         keyboardType: widget.keyboardType,
         style: widget.style ?? const TextStyle(
@@ -196,7 +196,10 @@ class _CommonTextFieldState extends State<CommonTextField> {
         ),
         cursorColor:  widget.cursorColor ?? ColorConstants.primaryGreen,
         controller: widget.controller,
-        onChanged: (value) {
+        // onChanged: (value) {
+        //   widget.onChanged?.call(value);
+        // },
+        onFieldSubmitted: (value) {
           widget.onChanged?.call(value);
         },
         validator: (text) {

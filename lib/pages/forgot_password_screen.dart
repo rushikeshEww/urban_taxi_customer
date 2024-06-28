@@ -7,18 +7,29 @@ import 'package:urban_taxi_customer/pages/link_sent_screen.dart';
 import '../common/color_constants.dart';
 import '../common/snackbar_util.dart';
 import '../common/string_constants.dart';
+import '../common/utils.dart';
 import '../common/widget/common_text.dart';
 import '../common/widget/common_text_field.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {
   ForgotPasswordScreen({super.key});
 
-  final ForgotPasswordController forgotPasswordController = Get.find();
+  // final ForgotPasswordController forgotPasswordController = Get.find();
+  final ForgotPasswordController forgotPasswordController = ForgotPasswordController();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _buildUI(context),
+    return GestureDetector(
+      onTap: () {
+        var f = FocusScope.of(context);
+
+        if (!f.hasPrimaryFocus) {
+          f.unfocus();
+        }
+      },
+      child: Scaffold(
+        body: _buildUI(context),
+      ),
     );
   }
 
@@ -41,7 +52,10 @@ class ForgotPasswordScreen extends StatelessWidget {
                         IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            onPressed: () { Get.back(); },
+                            onPressed: () {
+                                // forgotPasswordController.emptyData();
+                                Get.back();
+                              },
                             icon: SvgPicture.asset("assets/images/ic_back.svg", width: 18, height: 15,)
                         ),
                         const SizedBox(height: 56,),
@@ -52,6 +66,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                           StringConstants.forgotPasswordSubTitle, color: ColorConstants.grey,),
                         const SizedBox(height: 30,),
                         CommonTextField(
+                          textInputAction: TextInputAction.done,
                           controller: forgotPasswordController.emailController,
                           labelText: StringConstants.emailOrMobile,
                           allBorderNull: true,
@@ -66,17 +81,34 @@ class ForgotPasswordScreen extends StatelessWidget {
                             forgotPasswordController.emailController.text = value;
                           },
                           suffixPadding: const EdgeInsets.only(left: 8, right: 22.0),
+                          maxLength: 30,
+                          counterText: "",
                         ),
                       ],
                     )
                 ),
                 GestureDetector(
-                  onTap: () {
-                    if (forgotPasswordController.emailController.text.trim().isEmpty) {
+                  onTap: () async {
+                    String emailPhoneText = forgotPasswordController.emailController.text.trim();
+                    bool isNumericOnly = isNumeric(emailPhoneText);
+
+                    if (emailPhoneText.isEmpty) {
                       SnackbarUtil.show(title: StringConstants.emailOrMobileEmpty, message: StringConstants.emailOrMobileEmptyMsg);
                       return;
                     }
-                    Get.off(const LinkSentScreen());
+                    if (isNumericOnly && emailPhoneText.length < 10) {
+                      SnackbarUtil.show(title: StringConstants.mobileNumberInvalid, message: StringConstants.mobileNumberInvalidMsg);
+                      return;
+                    }
+                    if (!isNumericOnly && !RegExp(StringConstants.emailPattern).hasMatch(emailPhoneText)){
+                      SnackbarUtil.show(title: StringConstants.emailIdInvalid, message: StringConstants.emailIdInvalidMsg);
+                      return;
+                    }
+
+                    var success = await forgotPasswordController.getForgotPassword(emailPhoneText);
+                    if (success) {
+                      Get.off(() => const LinkSentScreen());
+                    }
                   },
                   child: Container(
                       height: 55,
@@ -97,11 +129,13 @@ class ForgotPasswordScreen extends StatelessWidget {
           Visibility(
             visible: forgotPasswordController.loading.value,
             child: const Positioned(
-                child: SizedBox(
-                  height: 30,
-                  width: 30,
-                  child: CircularProgressIndicator(
-                    color: ColorConstants.primaryGreen,
+                child: Center(
+                  child: SizedBox(
+                    height: 30,
+                    width: 30,
+                    child: CircularProgressIndicator(
+                      color: ColorConstants.primaryGreen,
+                    ),
                   ),
                 )
             ),
